@@ -1,0 +1,13 @@
+{
+  "name": "Skyblock Auctions Analyzer",
+  "version": "1.0.0",
+  "description": "My First Discord Bot",
+  "main": "bot.js",
+  "author": "AlexDGT",
+  "dependencies": {
+    "discord.io": "github:woor/discord.io#gateway_v6",
+    "jquery": "^3.5.1",
+    "node-fetch": "^2.6.0",
+    "winston": "^3.3.3"
+  }
+}
