@@ -14,8 +14,8 @@ Batches allow users to create groups of items to collectively track. This improv
 ## Batch Commands
   
 | Command| Arguments | Functionality | Example |
-| -----| --------| ---- | ---- |
-| **!create** | <batch_name> <item_array> <ah/bazaar> | Creates a new batch and automatically sets it to be tracked by default. When running this command, make sure that the item array has syntax as provided in the example. | !create | f7 | ["lapis","fireball","lazuli"] | ah |
+| --| --------| ---- | ---- |
+| **!create** | <batch_name> <item_array> <ah/bazaar> | Creates a new batch and automatically sets it to be tracked by default. When running this command, make sure that the item array has syntax as provided in the example. | !create \| f7 \| ["lapis","fireball","lazuli"] \| ah |
 | **!remove** | <batch_name> | Deletes the specified batch. | !remove f6 |
 | **!track** | <batch_name> | Enables tracking for the specified batch.  | !track f6 |
 | **!untrack** | <batch_name> | Disables tracking for the specified batch.| !untrack f6 |
@@ -37,7 +37,7 @@ Batches allow users to create groups of items to collectively track. This improv
 
 Here are some images to give you a sense of what this bot is capable of:
 
-<img src="https://imgur.com/8olZ3Iq">
-<img src="https://imgur.com/tmgFqto">
+<img src="https://i.imgur.com/8olZ3Iq.png">
+<img src="https://i.imgur.com/tmgFqto.png">
 
 
