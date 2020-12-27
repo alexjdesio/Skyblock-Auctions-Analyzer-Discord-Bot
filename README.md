@@ -40,4 +40,9 @@ Here are some images to give you a sense of what this bot is capable of:
 <img src="https://i.imgur.com/8olZ3Iq.png">
 <img src="https://i.imgur.com/tmgFqto.png">
 
+## Necessary Files
+If you want to run this bot on your own Node.js server, you need to create the the following files:
+- auth.json- This should contain your Discord Authentication key.
+- key.json- This should contain your Hypixel API key.
+
 
