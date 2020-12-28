@@ -1,6 +1,6 @@
 # Skyblock Auctions Analyzer
 
-Skyblock Auctions analyzer is a lightweight Discord Bot for parsing Auction House JSON data.
+Skyblock Auctions Analyzer is a lightweight Discord Bot for parsing Auction House JSON data.
 
 # Commands
   - **Snipe**(!snipe)- Regularly checks the auction house and notifies users of chosen items below a specified price point.
@@ -27,7 +27,7 @@ Batches allow users to create groups of items to collectively track. This improv
 - **Q**: Can I use this bot without downloading or running any code?
   - **A**: As of the initial release, to make use of this bot you must have a valid authentication token for a discord bot from https://discord.com/developers/applications. This is because the bot does not have distinct settings for individual users, and as such, would be difficult to deploy on multiple servers/for multiple users at the same time. This is only applicable for the initial release, and I intend to work on this in the future.
 - **Q**: What features are planned for future releases?
-   - **A**:  I have a lot planned! Right now, the top priorities are releasing **!find**, and adding functionality for processing all the different enchanted books, as their name is located inside of the item lore instead of in the item name.
+   - **A**:  I have a lot planned! Right now, the top priorities are releasing **!find**, improving the speed of the bot, caching results to prevent repeated work, and improving the batch creation command.
 - **Q**: How will this project scale?
   - **A**: As of v0.1, there is no concrete backend for this project. Scaling would require interaction with a database so that individual users could have their own list of batches and track/untrack batches just for themselves. The other key component to scaling this project is hosting it on a dedicated web server(i.e. Heroku, AWS, etc.). As soon as these two constraints are met, the bot can be officially released to the public and users will be able to add the bot to their servers without needing to set up their own version of the bot.
 - **Q**: Are there any other similar projects planned?
@@ -39,5 +39,12 @@ Here are some images to give you a sense of what this bot is capable of:
 
 <img src="https://i.imgur.com/8olZ3Iq.png">
 <img src="https://i.imgur.com/tmgFqto.png">
+
+
+## Changelog
+- **v0.1- Initial Release**
+  - Initial release of Skyblock Auctions Analyzer, with !watch, !snipe, and batch commands.
+- **v0.1.1- Enchanted Book Support**
+  - Added support for enchanted books to !watch and !snipe
 
 
