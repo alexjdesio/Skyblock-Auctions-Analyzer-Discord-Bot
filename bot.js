@@ -156,7 +156,7 @@ function processSnipeArray(max_price,auctions,watchList,channelID){
     for(let j = 0;j<auctions.length;++j){ //Analyze the first 100 auctions
         let auction = auctions[j];
         if(auction.hasOwnProperty('bin')){ //only assessing BIN auctions
-            let item_name = getBaseItem(auction.item_name);
+            let item_name = getBaseItem(auction.item_name,auction);
             let item_price = auction.starting_bid;
             for(let watched of watchList){
                 if(watched === item_name){
@@ -259,7 +259,7 @@ async function watch(channelID){
    * The specified auction is part of a tracked batch (incomplete)
    */
 function assessAuction(auction,watchList){
-    let item_name = getBaseItem(auction.item_name);
+    let item_name = getBaseItem(auction.item_name,auction);
     if (watchList.includes(item_name)){
         //console.log(item_name);
         if(auction.hasOwnProperty('bin')){ //only assessing BIN auctions
@@ -301,10 +301,15 @@ function assessAuction(auction,watchList){
     * the bot to use string matching to check for identical base items when performing price checking since item value is generally
     * determined by the base item rather than upgrades.
  */
-function getBaseItem(item_name){
+function getBaseItem(item_name,auction){
     let tiers = baseItems.tiers;
     let reforges = baseItems.reforges;
     let bases = baseItems.bases;
+
+    //Step 0: If this is an enchanted book, handle it with getBookBase()
+    if(item_name === "Enchanted Book"){
+        return getBookBase(auction);
+    }
 
     //Step 1: Remove Stars from Dungeon Items (i.e. Hyperion ✪✪)
     let curr_name = item_name;
@@ -335,7 +340,17 @@ function getBaseItem(item_name){
     return curr_name;
   }
 
-
+/**
+ * getBookBase() is a helper function for getBaseItem() that handles Enchanted Books specifically, where the base item name is located
+ * inside of the item lore and must be extracted.
+ */
+function getBookBase(auction){
+    let lore = auction.item_lore;
+    let base_name = lore.split("\n")[0]; //Take the first line of the item lore
+    base_name = base_name.replace(/(§.)+/,''); //removes all incidences of color codes
+    
+    return base_name;
+}
 
 
 //Finds the ID of the static channel
