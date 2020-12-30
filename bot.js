@@ -44,7 +44,9 @@ bot.on('message', parseMessage);
 //Initialize batches + api key from batches.txt and key.json
 let api_key = key_file.api_key;
 let batches = []; //contains an array of all batches
+let cache = []; //contains the last cached API call
 loadBatches(); //loads batches from batches.txt
+loadCache(); //loads cache from cache.txt
 
 //Processes messages sent in any discord text channel that the bot has access to.
 function parseMessage(user, userID, channelID, message, evt) {
@@ -60,7 +62,7 @@ function parseMessage(user, userID, channelID, message, evt) {
                 break;
             case('watch'): //
                 console.log("Watch activated...");
-                watch(channelID);
+                watch(channelID,args);
                 break;  
             case('display'):
                 if(channelID === staticID){
@@ -219,7 +221,7 @@ let checkedItems = [];
  */
 
 //formerly checkValue
-async function watch(channelID){
+async function watch(channelID,args){
     //let watchList = ["[Lvl 63] Spider","Necron's Handle", "Ender Artifact", "Aspect of the End", "Leaping Sword", "Wise Dragon Chestplate"];
     //load the watchList from the batches
     let watchList = [];
@@ -228,30 +230,83 @@ async function watch(channelID){
             watchList.push(item);
         }
     }
+
     console.log(watchList);
     if(watchList.length > 0){
         bot.sendMessage({to:channelID, message: `Finding lowest prices for ${watchList.length} items...`});
     }
 
-    let totalPages = 1;
-    for(let i = 0;i<totalPages;i++){
-        console.log("Currently working on page " + i + " of watch()");
-        let currPage = 'https://api.hypixel.net/skyblock/auctions?key=' + api_key + '&page=' + i;
-        fetch(currPage).then(res => res.json()).then(json => assessData(json));
-        await new Promise(r => setTimeout(r, 250));
+    let currTime = new Date().getTime();
+    let cachedTime = cache[0].lastUpdated;
+
+    // Cache vs. new query logic
+    if(args.length > 1){
+        if(args[0] === "force"){
+            console.log("forced, querying");
+            queryAH(); //command for new query set to API
+        }
     }
+    else if ((currTime-cachedTime)>(180*1000)){ //if more than 3 minutes have elapsed, then query the AH again
+        console.log("Time difference: ", currTime-cachedTime, " querying AH");
+        queryAH();
+    }
+    else{ // otherwise just used cached data
+        console.log("Parsing cache...");
+        parseCache();
+    }
+
     printWatch(allAuctions,channelID);
-  
+
+    //Could potentially use something like:
+        //Promise.all([0,totalPages].map(id => fetch(`https://api.hypixel.net/skyblock/auctions?key=${api_key}`).then(res => res.json()) )).then(json => assessData(json));
+            //would need to construct array 0->totalPages
+
+
+    async function queryAH(){
+        let totalPages = 1;
+        let newCache = [];
+        for(let i = 0;i<totalPages;i++){
+            console.log("Currently working on page " + i + " of watch()");
+            let currPage = 'https://api.hypixel.net/skyblock/auctions?key=' + api_key + '&page=' + i;
+            fetch(currPage).then(res => res.json()).then(json => {
+                totalPages = json.totalPages-1;
+                assessData(json);
+                newCache.push(json);
+            });
+            await new Promise(r => setTimeout(r, 250));
+        }
+        cache = newCache;
+        updateCacheFile();
+    }
+
     function assessData(json){
-        totalPages = json.totalPages;
         let auctions = json.auctions;
         //console.log(getTime(json.lastUpdated));
         for(let j = 0;j<auctions.length;++j){ //Analyze the first 100 auctions
             assessAuction(auctions[j],watchList);
         }
     }
+
+    //Parses the cache by sending each page to assessAuction() for processing
+    function parseCache(){
+        for(let page of cache){
+            assessData(page);
+        }
+    }
 }
-  
+
+function loadCache(){
+    let cache_data = fs.readFileSync('./cache.json');
+    cache = JSON.parse(cache_data);
+}
+
+function updateCacheFile(){
+    fs.writeFileSync('./cache.json',JSON.stringify(cache));
+}
+
+
+
+
   //should run but missing batch tracking
   /**
    * Takes an auction as input and validates whether it matches the following criteria:
@@ -503,5 +558,7 @@ function loadBatches(){
 function updateBatchFile(){
     fs.writeFileSync('./batches.txt',JSON.stringify(batches));
 }
+
+
 
 
