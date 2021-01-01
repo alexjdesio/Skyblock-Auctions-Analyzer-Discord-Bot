@@ -48,9 +48,20 @@ let cache = []; //contains the last cached API call
 loadBatches(); //loads batches from batches.txt
 loadCache(); //loads cache from cache.txt
 
+let findArgs = {reponse: false,
+                force: false};
+
 //Processes messages sent in any discord text channel that the bot has access to.
 function parseMessage(user, userID, channelID, message, evt) {
-    if (message.substring(0, 1) == '!') {
+    if(findArgs.response && (user !== "Skyblock Auction Analyzer")){
+        let args = [];
+        args.push(findArgs.force);
+        args.push(message);
+        watch(channelID,args,true);   
+        findArgs.response = false;
+        findArgs.force = false;
+    }
+    else if (message.substring(0, 1) == '!') {
         let args = message.substring(1).split(' ');
         let command = args[0];
         args = args.splice(1);
@@ -62,8 +73,13 @@ function parseMessage(user, userID, channelID, message, evt) {
                 break;
             case('watch'): //
                 console.log("Watch activated...");
-                watch(channelID,args);
-                break;  
+                watch(channelID,args,false);
+                break;
+            case('find'):
+                bot.sendMessage({to:channelID,message: "What would you like to find?"});
+                findArgs.response = true;
+                if(args[0] === "force"){ findArgs.force = true;}
+                break;
             case('display'):
                 if(channelID === staticID){
                     displayStaticBot(staticID);
@@ -169,10 +185,41 @@ function processSnipeArray(max_price,auctions,watchList,channelID){
     }
 }
 
+/**
+ * Helper function for watch(), specifically when called by !find
+ * Prints the first five prices for the specified item.
+ */
+async function printFind(allAuctions,channelID,watchList){
+    let printStr = "";
+    let item_name = watchList[0];
+    if(checkedItems.includes(item_name)){
+        let itemIndex = checkedItems.indexOf(item_name);
+        let auction = allAuctions[itemIndex];
+        printStr += auction.name + ": \n"
+        auction.itemArray.sort((a,b) => (a.price-b.price)); //sort itemArray in ascending order by price
+        let displayItems = auction.itemArray.slice(0,5); //creates shortened copy of item array for listing(lowest 5 prices)
+        for(let item of displayItems){
+            printStr += "    " + item.price.toLocaleString('en');
+            try{
+                let mojang_url = "https://api.mojang.com/user/profiles/" + item.auctioneer + "/names";
+                let response = await fetch(mojang_url);
+                if(response.ok){
+                    let json = await response.json();
+                    printStr += " /ah " + json[json.length-1].name;
+                } 
+            }catch{
+                console.log("UUID->Name request failed");
+            }
+            printStr += "\n";
+        }
+    }
+    bot.sendMessage({to: channelID, message: printStr});
+
+}
 
 /**
  * Helper function for watch()
- * Prints the first five prices for the tracked items.
+ * Prints the first five prices for all the batch-tracked items.
  */
 async function printWatch(allAuctions,channelID){
     let printStr = `\`\`\`CS\nTracked Batches: ${listBatches()}\nLast Updated ${new Date().toLocaleString()}\n\`\`\``;
@@ -221,9 +268,9 @@ let checkedItems = [];
  */
 
 //formerly checkValue
-async function watch(channelID,args){
+async function watch(channelID,args,find){
     //let watchList = ["[Lvl 63] Spider","Necron's Handle", "Ender Artifact", "Aspect of the End", "Leaping Sword", "Wise Dragon Chestplate"];
-    //load the watchList from the batches
+    //load the watchList from the batches  
     let watchList = [];
     for(let batch of batches){
         for(let item of batch.items){
@@ -231,20 +278,33 @@ async function watch(channelID,args){
         }
     }
 
+    if(find){
+        if(args.length > 0 && args[0] !== "force"){
+            watchList = []
+            watchList.push(args[0]);
+        }
+        else if(args.length > 1 && args[0] === "force" ){
+            watchList = []
+            watchList.push(args[1]);
+        }
+    }  
+
     console.log(watchList);
     if(watchList.length > 0){
         bot.sendMessage({to:channelID, message: `Finding lowest prices for ${watchList.length} items...`});
     }
 
     let currTime = new Date().getTime();
-    let cachedTime = cache[0].lastUpdated;
+    let cachedTime = 0;
+    if(cache.length > 0){
+        cachedTime = cache[0].lastUpdated;
+    }
+    
 
     // Cache vs. new query logic
-    if(args.length > 1){
-        if(args[0] === "force"){
-            console.log("forced, querying");
-            queryAH(); //command for new query set to API
-        }
+    if(args.includes("force")){
+        console.log("forced, querying");
+        queryAH(); //command for new query sent to API
     }
     else if ((currTime-cachedTime)>(180*1000)){ //if more than 3 minutes have elapsed, then query the AH again
         console.log("Time difference: ", currTime-cachedTime, " querying AH");
@@ -255,8 +315,13 @@ async function watch(channelID,args){
         parseCache();
     }
 
-    printWatch(allAuctions,channelID);
-
+    if(find){
+        printFind(allAuctions,channelID,watchList);
+    }
+    else{
+        printWatch(allAuctions,channelID);
+    }
+    
     //Could potentially use something like:
         //Promise.all([0,totalPages].map(id => fetch(`https://api.hypixel.net/skyblock/auctions?key=${api_key}`).then(res => res.json()) )).then(json => assessData(json));
             //would need to construct array 0->totalPages
@@ -296,15 +361,19 @@ async function watch(channelID,args){
 }
 
 function loadCache(){
-    let cache_data = fs.readFileSync('./cache.json');
-    cache = JSON.parse(cache_data);
+    if(fs.existsSync('./cache.json')){
+        let cache_data = fs.readFileSync('./cache.json');
+        cache = JSON.parse(cache_data);
+    }
+    else{
+        console.log("No cache found.");
+        cache = [];
+    }  
 }
 
 function updateCacheFile(){
     fs.writeFileSync('./cache.json',JSON.stringify(cache));
 }
-
-
 
 
   //should run but missing batch tracking
