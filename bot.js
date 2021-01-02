@@ -11,7 +11,7 @@ let baseItems = {};
 try {
     baseItems = require('./baseItems.json');
     baseItems.reforges = baseItems.reforge_string.split(" ");
-    console.log(baseItems);
+    //console.log(baseItems);
     console.log("Base items successfully loaded.");
 } catch(error) {
     console.log("Base items failed to load. Defaulting to abbreviated list");
@@ -44,11 +44,25 @@ bot.on('message', parseMessage);
 //Initialize batches + api key from batches.txt and key.json
 let api_key = key_file.api_key;
 let batches = []; //contains an array of all batches
+let cache = []; //contains the last cached API call
 loadBatches(); //loads batches from batches.txt
+loadCache(); //loads cache from cache.txt
+
+let findArgs = {reponse: false,
+                force: false};
 
 //Processes messages sent in any discord text channel that the bot has access to.
 function parseMessage(user, userID, channelID, message, evt) {
-    if (message.substring(0, 1) == '!') {
+    if(findArgs.response && (user !== "Skyblock Auction Analyzer")){
+        let args = {
+            force: findArgs.force,
+            query: message
+        };
+        watch(channelID,args,true);   
+        findArgs.response = false;
+        findArgs.force = false;
+    }
+    else if (message.substring(0, 1) == '!') {
         let args = message.substring(1).split(' ');
         let command = args[0];
         args = args.splice(1);
@@ -60,8 +74,13 @@ function parseMessage(user, userID, channelID, message, evt) {
                 break;
             case('watch'): //
                 console.log("Watch activated...");
-                watch(channelID);
-                break;  
+                watch(channelID,args,false);
+                break;
+            case('find'):
+                bot.sendMessage({to:channelID,message: "What would you like to find?"});
+                findArgs.response = true;
+                if(args[0] === "force"){ findArgs.force = true;}
+                break;
             case('display'):
                 if(channelID === staticID){
                     displayStaticBot(staticID);
@@ -167,10 +186,43 @@ function processSnipeArray(max_price,auctions,watchList,channelID){
     }
 }
 
+/**
+ * Helper function for watch(), specifically when called by !find
+ * Prints the first five prices for the specified item.
+ */
+async function printFind(allAuctions,channelID,watchList){
+    let printStr = "";
+    let item_name = watchList[0];
+    console.log(checkedItems);
+    if(checkedItems.includes(item_name)){
+        let itemIndex = checkedItems.indexOf(item_name);
+        let auction = allAuctions[itemIndex];
+        printStr += auction.name + ": \n"
+        auction.itemArray.sort((a,b) => (a.price-b.price)); //sort itemArray in ascending order by price
+        let displayItems = auction.itemArray.slice(0,5); //creates shortened copy of item array for listing(lowest 5 prices)
+        for(let item of displayItems){
+            printStr += "    " + item.price.toLocaleString('en');
+            try{
+                let mojang_url = "https://api.mojang.com/user/profiles/" + item.auctioneer + "/names";
+                let response = await fetch(mojang_url);
+                if(response.ok){
+                    let json = await response.json();
+                    printStr += " /ah " + json[json.length-1].name;
+                } 
+            }catch{
+                console.log("UUID->Name request failed");
+            }
+            printStr += "\n";
+        }
+    }
+    console.log(printStr);
+    bot.sendMessage({to: channelID, message: printStr});
+
+}
 
 /**
  * Helper function for watch()
- * Prints the first five prices for the tracked items.
+ * Prints the first five prices for all the batch-tracked items.
  */
 async function printWatch(allAuctions,channelID){
     let printStr = `\`\`\`CS\nTracked Batches: ${listBatches()}\nLast Updated ${new Date().toLocaleString()}\n\`\`\``;
@@ -219,39 +271,112 @@ let checkedItems = [];
  */
 
 //formerly checkValue
-async function watch(channelID){
+async function watch(channelID,args,find){
     //let watchList = ["[Lvl 63] Spider","Necron's Handle", "Ender Artifact", "Aspect of the End", "Leaping Sword", "Wise Dragon Chestplate"];
-    //load the watchList from the batches
+    //load the watchList from the batches  
     let watchList = [];
     for(let batch of batches){
         for(let item of batch.items){
             watchList.push(item);
         }
     }
-    console.log(watchList);
+
+    console.log(args);
+
+    if(find){
+        watchList = []
+        watchList.push(args.query);
+    }  
+
+    //console.log("Watchlist:", watchList, "Args:", args);
     if(watchList.length > 0){
         bot.sendMessage({to:channelID, message: `Finding lowest prices for ${watchList.length} items...`});
     }
 
-    let totalPages = 1;
-    for(let i = 0;i<totalPages;i++){
-        console.log("Currently working on page " + i + " of watch()");
-        let currPage = 'https://api.hypixel.net/skyblock/auctions?key=' + api_key + '&page=' + i;
-        fetch(currPage).then(res => res.json()).then(json => assessData(json));
-        await new Promise(r => setTimeout(r, 250));
+    let currTime = new Date().getTime();
+    let cachedTime = 0;
+    if(cache.length > 0){
+        cachedTime = cache[0].lastUpdated;
     }
-    printWatch(allAuctions,channelID);
-  
+    
+
+    // Cache vs. new query logic
+    if(args.force === true){
+        console.log("forced, querying");
+        await queryAH(); //command for new query sent to API
+    }
+    else if ((currTime-cachedTime)>(180*1000)){ //if more than 3 minutes have elapsed, then query the AH again
+        console.log("Time difference: ", currTime-cachedTime, " querying AH");
+        await queryAH();
+    }
+    else{ // otherwise just used cached data
+        console.log("Parsing cache...");
+        await parseCache();
+    }
+
+    console.log("Find is: ", find);
+    if(find){
+        printFind(allAuctions,channelID,watchList);
+    }
+    else{
+        printWatch(allAuctions,channelID);
+    }
+    
+    //Could potentially use something like:
+        //Promise.all([0,totalPages].map(id => fetch(`https://api.hypixel.net/skyblock/auctions?key=${api_key}`).then(res => res.json()) )).then(json => assessData(json));
+            //would need to construct array 0->totalPages
+
+
+    async function queryAH(){
+        let totalPages = 1;
+        let newCache = [];
+        for(let i = 0;i<totalPages;i++){
+            console.log("Currently working on page " + i + " of watch()");
+            let currPage = 'https://api.hypixel.net/skyblock/auctions?key=' + api_key + '&page=' + i;
+            await fetch(currPage).then(res => res.json()).then(json => {
+                totalPages = json.totalPages-1;
+                //assessData(json);
+                newCache.push(json);
+            });
+            await new Promise(r => setTimeout(r, 50));
+        }
+        cache = newCache;
+        await updateCacheFile();
+        parseCache();
+    }
+
     function assessData(json){
-        totalPages = json.totalPages;
         let auctions = json.auctions;
         //console.log(getTime(json.lastUpdated));
         for(let j = 0;j<auctions.length;++j){ //Analyze the first 100 auctions
             assessAuction(auctions[j],watchList);
         }
     }
+
+    //Parses the cache by sending each page to assessAuction() for processing
+    function parseCache(){
+        for(let page of cache){
+            assessData(page);
+        }
+    }
 }
-  
+
+function loadCache(){
+    if(fs.existsSync('./cache.json')){
+        let cache_data = fs.readFileSync('./cache.json');
+        cache = JSON.parse(cache_data);
+    }
+    else{
+        console.log("No cache found.");
+        cache = [];
+    }  
+}
+
+function updateCacheFile(){
+    fs.writeFileSync('./cache.json',JSON.stringify(cache));
+}
+
+
   //should run but missing batch tracking
   /**
    * Takes an auction as input and validates whether it matches the following criteria:
@@ -497,11 +622,13 @@ function listBatches(channelID){
 function loadBatches(){
     let batch_data = fs.readFileSync('./batches.txt');
     batches = JSON.parse(batch_data);
-    console.log(batches);
+    //console.log(batches);
 }
 
 function updateBatchFile(){
     fs.writeFileSync('./batches.txt',JSON.stringify(batches));
 }
+
+
 
 
