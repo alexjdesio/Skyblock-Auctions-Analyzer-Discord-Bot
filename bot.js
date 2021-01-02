@@ -11,7 +11,7 @@ let baseItems = {};
 try {
     baseItems = require('./baseItems.json');
     baseItems.reforges = baseItems.reforge_string.split(" ");
-    console.log(baseItems);
+    //console.log(baseItems);
     console.log("Base items successfully loaded.");
 } catch(error) {
     console.log("Base items failed to load. Defaulting to abbreviated list");
@@ -54,9 +54,10 @@ let findArgs = {reponse: false,
 //Processes messages sent in any discord text channel that the bot has access to.
 function parseMessage(user, userID, channelID, message, evt) {
     if(findArgs.response && (user !== "Skyblock Auction Analyzer")){
-        let args = [];
-        args.push(findArgs.force);
-        args.push(message);
+        let args = {
+            force: findArgs.force,
+            query: message
+        };
         watch(channelID,args,true);   
         findArgs.response = false;
         findArgs.force = false;
@@ -192,6 +193,7 @@ function processSnipeArray(max_price,auctions,watchList,channelID){
 async function printFind(allAuctions,channelID,watchList){
     let printStr = "";
     let item_name = watchList[0];
+    console.log(checkedItems);
     if(checkedItems.includes(item_name)){
         let itemIndex = checkedItems.indexOf(item_name);
         let auction = allAuctions[itemIndex];
@@ -213,6 +215,7 @@ async function printFind(allAuctions,channelID,watchList){
             printStr += "\n";
         }
     }
+    console.log(printStr);
     bot.sendMessage({to: channelID, message: printStr});
 
 }
@@ -278,18 +281,14 @@ async function watch(channelID,args,find){
         }
     }
 
+    console.log(args);
+
     if(find){
-        if(args.length > 0 && args[0] !== "force"){
-            watchList = []
-            watchList.push(args[0]);
-        }
-        else if(args.length > 1 && args[0] === "force" ){
-            watchList = []
-            watchList.push(args[1]);
-        }
+        watchList = []
+        watchList.push(args.query);
     }  
 
-    console.log(watchList);
+    //console.log("Watchlist:", watchList, "Args:", args);
     if(watchList.length > 0){
         bot.sendMessage({to:channelID, message: `Finding lowest prices for ${watchList.length} items...`});
     }
@@ -302,19 +301,20 @@ async function watch(channelID,args,find){
     
 
     // Cache vs. new query logic
-    if(args.includes("force")){
+    if(args.force === true){
         console.log("forced, querying");
-        queryAH(); //command for new query sent to API
+        await queryAH(); //command for new query sent to API
     }
     else if ((currTime-cachedTime)>(180*1000)){ //if more than 3 minutes have elapsed, then query the AH again
         console.log("Time difference: ", currTime-cachedTime, " querying AH");
-        queryAH();
+        await queryAH();
     }
     else{ // otherwise just used cached data
         console.log("Parsing cache...");
-        parseCache();
+        await parseCache();
     }
 
+    console.log("Find is: ", find);
     if(find){
         printFind(allAuctions,channelID,watchList);
     }
@@ -333,15 +333,16 @@ async function watch(channelID,args,find){
         for(let i = 0;i<totalPages;i++){
             console.log("Currently working on page " + i + " of watch()");
             let currPage = 'https://api.hypixel.net/skyblock/auctions?key=' + api_key + '&page=' + i;
-            fetch(currPage).then(res => res.json()).then(json => {
+            await fetch(currPage).then(res => res.json()).then(json => {
                 totalPages = json.totalPages-1;
-                assessData(json);
+                //assessData(json);
                 newCache.push(json);
             });
-            await new Promise(r => setTimeout(r, 250));
+            await new Promise(r => setTimeout(r, 50));
         }
         cache = newCache;
-        updateCacheFile();
+        await updateCacheFile();
+        parseCache();
     }
 
     function assessData(json){
@@ -621,7 +622,7 @@ function listBatches(channelID){
 function loadBatches(){
     let batch_data = fs.readFileSync('./batches.txt');
     batches = JSON.parse(batch_data);
-    console.log(batches);
+    //console.log(batches);
 }
 
 function updateBatchFile(){
