@@ -46,5 +46,8 @@ Here are some images to give you a sense of what this bot is capable of:
   - Initial release of Skyblock Auctions Analyzer, with !watch, !snipe, and batch commands.
 - **v0.1.1- Enchanted Book Support**
   - Added support for enchanted books to !watch and !snipe
+- **v0.1.2- Caching, !find
+  - !watch and !find now support caching, which means that requests within 3 minutes of a previous valid request will use the auction house data of the previous request. This reduces repeated strain on the Hypixel API and helps keep high volume requests within the key limit while also greatly improving speed.
+  - !find- Search for a single item extremely quickly and get a breakdown of the 5 cheapest listings and their owners. When combined with caching, this is very useful for quickly finding items.
 
 
