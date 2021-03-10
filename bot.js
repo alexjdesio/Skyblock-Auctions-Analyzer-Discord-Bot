@@ -45,6 +45,7 @@ bot.on('message', parseMessage);
 let api_key = key_file.api_key;
 let batches = []; //contains an array of all batches
 let cache = []; //contains the last cached API call
+let bot_name = "Skyblock Auction Analyzer" //contains the name of the bot
 loadBatches(); //loads batches from batches.txt
 loadCache(); //loads cache from cache.txt
 
@@ -53,7 +54,8 @@ let findArgs = {reponse: false,
 
 //Processes messages sent in any discord text channel that the bot has access to.
 function parseMessage(user, userID, channelID, message, evt) {
-    if(findArgs.response && (user !== "Skyblock Auction Analyzer")){
+    console.log(user + ": \"" + message + "\"");
+    if(findArgs.response && (user !== bot_name)){
         let args = {
             force: findArgs.force,
             query: message
@@ -363,8 +365,10 @@ async function watch(channelID,args,find){
 
 function loadCache(){
     if(fs.existsSync('./cache.json')){
+        console.log("Cache found.");
         let cache_data = fs.readFileSync('./cache.json');
         cache = JSON.parse(cache_data);
+        console.log("Cache successfully parsed.")
     }
     else{
         console.log("No cache found.");
