@@ -72,7 +72,7 @@ function parseMessage(user, userID, channelID, message, evt) {
         
         switch(command){
             case('snipe'): //Finds items below a specified threshold and prints them in the channel
-                snipe(channelID);
+                snipe(channelID, args);
                 break;
             case('watch'): //
                 console.log("Watch activated...");
@@ -123,14 +123,21 @@ function parseMessage(user, userID, channelID, message, evt) {
  * Example output:
  * [13:24:36]  Wither Shield: 71,499,999(-11%)
  */
-async function snipe(channelID){ 
+async function snipe(channelID,args){ 
     let base_url = 'https://api.hypixel.net/skyblock/auctions?key=' + api_key + '&page='; //add page num at the end
-    let watchList = ["Implosion","Wither Shield","Shadow Warp","Necron's Handle"];
+    /*
+    "Implosion": 76000000,
+    "Wither Shield": 75600000,
+    "Shadow Warp": 75600000,
+    "Necron's Handle": 342000000,
+    */
+    //"Implosion","Wither Shield","Shadow Warp","Necron's Handle",
+    let watchList = [ "Wither Chestplate 5star", "Aspect of the Dragons 3star", "Zombie Commander Chestplate 1star"];
+    //watchList supports ✪
     let max_price = {
-        "Implosion": 76000000,
-        "Wither Shield": 75600000,
-        "Shadow Warp": 75600000,
-        "Necron's Handle": 342000000
+        "Wither Chestplate 5star": 200000000, //for max price, do not include the ✪
+        "Aspect of the Dragons 3star": 10000000,
+        "Zombie Commander Chestplate 1star": 4000000
   };
   //additionally check to make sure it's looking at EVERYTHING in the AH
   while(true){
@@ -144,7 +151,7 @@ async function snipe(channelID){
             if(response.ok){
             let pageData = await response.json();
             totalPages = pageData.totalPages;
-            processSnipeArray(max_price,pageData.auctions,watchList,channelID); //Called on each page of the auction house
+            processSnipeArray(max_price,pageData.auctions,watchList,channelID,args); //Called on each page of the auction house
             }
             console.log(i);
         }
@@ -173,15 +180,15 @@ function printItemSnipe(item_name,item_price,max_price,channelID){
  * @param auctions: Array of auctions from the Hypixel API 
  * @param channelID: The discord text channelID where the print message will be sent. 
  */
-function processSnipeArray(max_price,auctions,watchList,channelID){
+function processSnipeArray(max_price,auctions,watchList,channelID,args){
     for(let j = 0;j<auctions.length;++j){ //Analyze the first 100 auctions
         let auction = auctions[j];
         if(auction.hasOwnProperty('bin')){ //only assessing BIN auctions
             let item_name = getBaseItem(auction.item_name,auction);
             let item_price = auction.starting_bid;
             for(let watched of watchList){
-                if(watched === item_name){
-                    if(max_price[watched] > item_price){ printItemSnipe(item_name,item_price,max_price,channelID);}
+                if(item_name === getBaseItem(watched,auction)){
+                    if(max_price[watched] > item_price){ printItemSnipe(getBaseItem(auction.item_name,auction),item_price,max_price,channelID);}
                 }
             }
         }
@@ -278,9 +285,11 @@ async function watch(channelID,args,find){
     //load the watchList from the batches  
     let watchList = [];
     for(let batch of batches){
-        for(let item of batch.items){
-            watchList.push(item);
-        }
+        if(batch.track){
+            for(let item of batch.items){
+                watchList.push(item);
+            }
+        } 
     }
 
     console.log(args);
@@ -440,10 +449,10 @@ function getBaseItem(item_name,auction){
         return getBookBase(auction);
     }
 
-    //Step 1: Remove Stars from Dungeon Items (i.e. Hyperion ✪✪)
     let curr_name = item_name;
-    curr_name = curr_name.replace(/✪*/g,"");
-
+    //Step 1: Change format of stars so that they can be processed without removing or ignoring them
+    curr_name = convertStars(curr_name);
+    
     //Step 2: Remove Tiers from Perfect Armor (i.e. Perfect Armor - Tier IV)
     for(let i = 0; i<tiers.length; i++){
       curr_name = curr_name.replace(tiers[i],"");
@@ -479,6 +488,20 @@ function getBookBase(auction){
     base_name = base_name.replace(/(§.)+/,''); //removes all incidences of color codes
     
     return base_name;
+}
+
+//Replaces stars ✪ with "xstar" where x is the number of stars replaced
+function convertStars(item_name){
+    let star_count = 0;    
+    while(item_name.includes("✪")){
+        item_name = item_name.replace("✪","");
+        star_count++;
+    }
+    if(star_count>0){
+        item_name += star_count;
+        item_name += "star";
+    }
+    return item_name;
 }
 
 
