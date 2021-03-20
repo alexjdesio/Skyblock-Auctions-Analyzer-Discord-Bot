@@ -151,7 +151,7 @@ async function snipe(channelID,args){
             if(response.ok){
             let pageData = await response.json();
             totalPages = pageData.totalPages;
-            processSnipeArray(max_price,pageData.auctions,watchList,channelID,args,); //Called on each page of the auction house
+            processSnipeArray(max_price,pageData.auctions,watchList,channelID,args); //Called on each page of the auction house
             }
             console.log(i);
         }
