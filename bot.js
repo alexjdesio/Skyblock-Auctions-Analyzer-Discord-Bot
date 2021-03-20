@@ -160,7 +160,7 @@ async function snipe(channelID,args){
   }    
 }
 
-function printItemSnipe(item_name,item_price,max_price,channelID){
+function printItemSnipe(item_name,item_price,max_price,item_auctionId,channelID){
     let today = new Date();
     let printStr = "[" + today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds() + "] ";
     if(item_name in max_price){
@@ -170,7 +170,7 @@ function printItemSnipe(item_name,item_price,max_price,channelID){
         if(item_price < expected_price[item_name]){
             printStr = printStr + "-";
         }
-        printStr = printStr + percentage + ")" + "\n";
+        printStr = printStr + percentage + ")" + "\n" + "/viewauction " + item_auctionId.substr(0, 8) + "-" + item_auctionId.substr(8, 4) + "-" + item_auctionId.substr(12, 4) + "-" + item_auctionId.substr(16, 4) + "-" + item_auctionId.substr(20);
         bot.sendMessage({to: channelID, message: printStr});
    }
 }
@@ -186,9 +186,10 @@ function processSnipeArray(max_price,auctions,watchList,channelID,args){
         if(auction.hasOwnProperty('bin')){ //only assessing BIN auctions
             let item_name = getBaseItem(auction.item_name,auction);
             let item_price = auction.starting_bid;
+	    let item_auctionId = auction.uuid
             for(let watched of watchList){
                 if(item_name === getBaseItem(watched,auction)){
-                    if(max_price[watched] > item_price){ printItemSnipe(getBaseItem(auction.item_name,auction),item_price,max_price,channelID);}
+                    if(max_price[watched] > item_price){ printItemSnipe(getBaseItem(auction.item_name,auction),item_price,max_price,item_auctionId,channelID);}
                 }
             }
         }
