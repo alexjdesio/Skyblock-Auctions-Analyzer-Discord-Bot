@@ -1,10 +1,11 @@
 "use strict";
-let Discord = require('discord.io');
+//let Discord = require('discord.io');
 let logger = require('winston');
 let auth = require('./auth.json');
 let key_file = require('./key.json');
 const fetch = require('node-fetch');
 const fs = require('fs');
+const Discord = require('discord.js');
 
 
 let baseItems = {};
@@ -27,19 +28,16 @@ logger.add(new logger.transports.Console, {
     colorize: true
 });
 logger.level = 'debug';
-// Initialize Discord Bot
-var bot = new Discord.Client({
-   token: auth.token,
-   autorun: true
-});
 
-bot.on('ready', function (evt) {
-    logger.info('Connected');
-    logger.info('Logged in as: ');
-    logger.info(bot.username + ' - (' + bot.id + ')');
-});
 
+const bot = new Discord.Client();
+bot.on('ready', () => {
+  console.log(`Logged in as ${bot.user.tag}!`);
+});
 bot.on('message', parseMessage);
+bot.login(auth.token);
+
+
 
 //Initialize batches + api key from batches.txt and key.json
 let api_key = key_file.api_key;
@@ -52,15 +50,23 @@ loadCache(); //loads cache from cache.txt
 let findArgs = {reponse: false,
                 force: false};
 
+
+
 //Processes messages sent in any discord text channel that the bot has access to.
-function parseMessage(user, userID, channelID, message, evt) {
+function parseMessage(msg) {
+    let user = msg.author;
+    let channelID = msg.channel;
+    let message = msg.content;
+    console.log("user:",user);
+    console.log(bot);
+
     console.log(user + ": \"" + message + "\"");
-    if(findArgs.response && (user !== bot_name)){
+    if(findArgs.response && !user.bot){
         let args = {
             force: findArgs.force,
             query: message
         };
-        watch(channelID,args,true);   
+        watch(msg,args,true);   
         findArgs.response = false;
         findArgs.force = false;
     }
@@ -68,18 +74,18 @@ function parseMessage(user, userID, channelID, message, evt) {
         let args = message.substring(1).split(' ');
         let command = args[0];
         args = args.splice(1);
-        let staticID = findStaticChannelID(channelID); //finds the ID of the static channel
+        let staticID = findStaticChannelID(); //finds the ID of the static channel
         
         switch(command){
             case('snipe'): //Finds items below a specified threshold and prints them in the channel
-                snipe(channelID, args);
+                snipe(msg, args);
                 break;
             case('watch'): //
                 console.log("Watch activated...");
-                watch(channelID,args,false);
+                watch(msg,args,false);
                 break;
             case('find'):
-                bot.sendMessage({to:channelID,message: "What would you like to find?"});
+                msg.channel.send("What would you like to find?");
                 findArgs.response = true;
                 if(args[0] === "force"){ findArgs.force = true;}
                 break;
@@ -89,26 +95,26 @@ function parseMessage(user, userID, channelID, message, evt) {
                 }
                 break;
             case('track'): //add a batch to the tracking channel
-                    trackBatch(channelID,args[0]);
+                    trackBatch(msg,args[0]);
                     break;
             case('untrack'): //remove a batch from the tracking channel
                 console.log(args[0]);
-                untrackBatch(channelID,args[0]);
+                untrackBatch(msg,args[0]);
                 break;
             case('create'): //create a new batch
                 let batchFormat = message.substring(1).split(' | ');
                 //!create | f6 | ["lapis","fireball","lazuli"] | ah
-                createBatch(channelID,batchFormat);
+                createBatch(msg,batchFormat);
                 break;
             case('remove'):
-                removeBatch(channelID,args[0]);    
+                removeBatch(msg,args[0]);    
                 break;
             case('list'): //Prints the names of all available batches
-                bot.sendMessage({to:channelID, message: listBatches(channelID)});
+                msg.channel.send(listBatches(msg));
                 break;
             case('help'):
                 let helpStr = "Available commands: create, remove, track, untrack, list, help";
-                bot.sendMessage({to:channelID, message: helpStr});
+                listBatches(helpStr);
                 break;
         }      
     }
@@ -123,7 +129,7 @@ function parseMessage(user, userID, channelID, message, evt) {
  * Example output:
  * [13:24:36]  Wither Shield: 71,499,999(-11%)
  */
-async function snipe(channelID,args){ 
+async function snipe(msg,args){ 
     let base_url = 'https://api.hypixel.net/skyblock/auctions?key=' + api_key + '&page='; //add page num at the end
     /*
     "Implosion": 76000000,
@@ -151,7 +157,7 @@ async function snipe(channelID,args){
             if(response.ok){
             let pageData = await response.json();
             totalPages = pageData.totalPages;
-            processSnipeArray(max_price,pageData.auctions,watchList,channelID,args); //Called on each page of the auction house
+            processSnipeArray(max_price,pageData.auctions,watchList,msg,args); //Called on each page of the auction house
             }
             console.log(i);
         }
@@ -160,7 +166,7 @@ async function snipe(channelID,args){
   }    
 }
 
-function printItemSnipe(item_name,item_price,max_price,channelID){
+function printItemSnipe(item_name,item_price,max_price,msg){
     let today = new Date();
     let printStr = "[" + today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds() + "] ";
     if(item_name in max_price){
@@ -171,16 +177,16 @@ function printItemSnipe(item_name,item_price,max_price,channelID){
             printStr = printStr + "-";
         }
         printStr = printStr + percentage + ")" + "\n";
-        bot.sendMessage({to: channelID, message: printStr});
+        msg.channel.send(printStr);
+        
    }
 }
 
 /**
  * @param max_price: Object with key-value pairs of the form String:number representing the name of an item and the maximum price for consideration.
  * @param auctions: Array of auctions from the Hypixel API 
- * @param channelID: The discord text channelID where the print message will be sent. 
  */
-function processSnipeArray(max_price,auctions,watchList,channelID,args){
+function processSnipeArray(max_price,auctions,watchList,msg,args){
     for(let j = 0;j<auctions.length;++j){ //Analyze the first 100 auctions
         let auction = auctions[j];
         if(auction.hasOwnProperty('bin')){ //only assessing BIN auctions
@@ -188,7 +194,7 @@ function processSnipeArray(max_price,auctions,watchList,channelID,args){
             let item_price = auction.starting_bid;
             for(let watched of watchList){
                 if(item_name === getBaseItem(watched,auction)){
-                    if(max_price[watched] > item_price){ printItemSnipe(getBaseItem(auction.item_name,auction),item_price,max_price,channelID);}
+                    if(max_price[watched] > item_price){ printItemSnipe(getBaseItem(auction.item_name,auction),item_price,max_price,msg);}
                 }
             }
         }
@@ -199,7 +205,7 @@ function processSnipeArray(max_price,auctions,watchList,channelID,args){
  * Helper function for watch(), specifically when called by !find
  * Prints the first five prices for the specified item.
  */
-async function printFind(allAuctions,channelID,watchList){
+async function printFind(allAuctions,msg,watchList){
     let printStr = "";
     let item_name = watchList[0];
     console.log(checkedItems);
@@ -225,7 +231,13 @@ async function printFind(allAuctions,channelID,watchList){
         }
     }
     console.log(printStr);
-    bot.sendMessage({to: channelID, message: printStr});
+    if(printStr == ""){
+        msg.channel.send("No items found with name: " + item_name);
+    }
+    else{
+        msg.channel.send(printStr);
+    }
+    
 
 }
 
@@ -233,7 +245,7 @@ async function printFind(allAuctions,channelID,watchList){
  * Helper function for watch()
  * Prints the first five prices for all the batch-tracked items.
  */
-async function printWatch(allAuctions,channelID){
+async function printWatch(allAuctions,msg){
     let printStr = `\`\`\`CS\nTracked Batches: ${listBatches()}\nLast Updated ${new Date().toLocaleString()}\n\`\`\``;
     for(let batch of batches){
         if(batch.track){
@@ -260,15 +272,19 @@ async function printWatch(allAuctions,channelID){
                         printStr += "\n";
                     }
                 }
+                if(printStr.length > 1000){ //Prevents the discord message from exceeding the 2000 character limit.
+                    console.log(printStr);
+                    printStr += `\`\`\``
+                    msg.channel.send(printStr);
+                    printStr = `\`\`\`CSS\n`;
+                }
             }
             printStr += `\`\`\``;
-            if(printStr.length > 1000){ //Prevents the discord message from exceeding the 2000 character limit.
-                bot.sendMessage({to: channelID, message: printStr});
-                printStr = "";
-            }
         }
     }
-    bot.sendMessage({to: channelID, message: printStr});
+    if(printStr.length > 0){
+        msg.channel.send(printStr);
+    } 
 }
 
 let allAuctions = [];
@@ -280,7 +296,7 @@ let checkedItems = [];
  */
 
 //formerly checkValue
-async function watch(channelID,args,find){
+async function watch(msg,args,find){
     //let watchList = ["[Lvl 63] Spider","Necron's Handle", "Ender Artifact", "Aspect of the End", "Leaping Sword", "Wise Dragon Chestplate"];
     //load the watchList from the batches  
     let watchList = [];
@@ -301,7 +317,7 @@ async function watch(channelID,args,find){
 
     //console.log("Watchlist:", watchList, "Args:", args);
     if(watchList.length > 0){
-        bot.sendMessage({to:channelID, message: `Finding lowest prices for ${watchList.length} items...`});
+        msg.channel.send(`Finding lowest prices for ${watchList.length} items...`);
     }
 
     let currTime = new Date().getTime();
@@ -327,10 +343,10 @@ async function watch(channelID,args,find){
 
     console.log("Find is: ", find);
     if(find){
-        printFind(allAuctions,channelID,watchList);
+        printFind(allAuctions,msg,watchList);
     }
     else{
-        printWatch(allAuctions,channelID);
+        printWatch(allAuctions,msg);
     }
     
     //Could potentially use something like:
@@ -529,7 +545,7 @@ Precursor Eye: 5,500,000
 ```
  */
 
-function displayStaticBot(channelID){
+function displayStaticBot(msg){
     let staticStr = `
     \`\`\`CS\nTracked Batches: ${listBatches()}\nLast Updated ${new Date().toLocaleString()}\n\`\`\``;
     for(let batch of batches){
@@ -541,7 +557,7 @@ function displayStaticBot(channelID){
             staticStr += `\`\`\``;
         }
     }
-    bot.sendMessage({to:channelID, message: staticStr});
+    msg.channel.send(staticStr);
 }
 
 
@@ -568,49 +584,49 @@ function getBatch(name){ //returns batch or undefined if no batch found
 }
 
 //Enables a batch for tracking
-function trackBatch(channelID,name){
+function trackBatch(msg,name){
     let batch = getBatch(name);
     if(batch){ //checks if the batch exists
         if(batch.track){
-            bot.sendMessage({to:channelID, message: `${name} is already tracked`});
+            msg.channel.send(`${name} is already tracked`);
         }
         else{
             batch.track = true;
             updateBatchFile();
-            bot.sendMessage({to:channelID, message: `${name} is now being tracked`});
+            msg.channel.send(`${name} is now being tracked`);
         }
     }
     else{
-        bot.sendMessage({to:channelID, message: "The batch doesn't exist."});
+        msg.channel.send("The batch doesn't exist.");
     }
 }
 
 //Removes the batch from being tracked
-function untrackBatch(channelID,name){
+function untrackBatch(msg,name){
     let batch = getBatch(name);
     if(batch){ //checks if the batch exists
         if(!batch.track){
-            bot.sendMessage({to:channelID, message: `${name} is already not tracked`});
+            msg.channel.send(`${name} is already not tracked`);
         }
         else{
             batch.track = false;
             updateBatchFile();
-            bot.sendMessage({to:channelID, message: `${name} is no longer being tracked`});
+            msg.channel.send(`${name} is no longer being tracked`);
         }
     }
     else{
-        bot.sendMessage({to:channelID, message: "The batch doesn't exist."});
+        msg.channel.send("The batch doesn't exist.");
     }
 }
 
 //Creates a new batch given user input in the following format;
 //!create | f6 | ["lapis","fireball","lazuli"] | ah
-function createBatch(channelID,batchFormat){
+function createBatch(msg,batchFormat){
     if(batchFormat.length < 3){
-        bot.sendMessage({to:channelID, message: "Invalid format. Please enter a create command of the following format:\n !create | batch_name | [item1,item2] | type\n Valid types: ah, bazaar"});
+        msg.channel.send("Invalid format. Please enter a create command of the following format:\n !create | batch_name | [item1,item2] | type\n Valid types: ah, bazaar");
     }
     else if (batchFormat[3] !== "ah" && batchFormat[3] !== "bazaar"){
-        bot.sendMessage({to:channelID, message: "Invalid batch type."});
+        msg.channel.send("Invalid batch type.");
     }
     else{
         let newBatch = {
@@ -620,26 +636,26 @@ function createBatch(channelID,batchFormat){
             type: batchFormat[3]
         };
         batches.push(newBatch); 
-        bot.sendMessage({to:channelID, message: "Batch successfully created.\n" + JSON.stringify(newBatch,null,2)});
+        msg.channel.send("Batch successfully created.\n" + JSON.stringify(newBatch,null,2));
         updateBatchFile();
     }
 }
 
-function removeBatch(channelID,name){
+function removeBatch(msg,name){
     for(let i = 0; i < batches.length; i++){
         let batch = batches[i];
         if(batch.name === name){
             batches.splice(i,1); //remove the batch
-            bot.sendMessage({to:channelID, message: "Batch successfully removed."});
+            msg.channel.send("Batch successfully removed.");
             updateBatchFile();
             return;
         }
     }
-    bot.sendMessage({to:channelID, message: "Batch not found."});
+    msg.channel.send("Batch not found.");
 }
 
 //Lists the names of all available batches.
-function listBatches(channelID){
+function listBatches(msg){
     let batch_names = [];
     batches.forEach((item) => batch_names.push(item.name));
     return batch_names.join(", ");
