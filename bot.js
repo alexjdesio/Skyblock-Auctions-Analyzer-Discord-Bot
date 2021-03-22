@@ -57,8 +57,6 @@ function parseMessage(msg) {
     let user = msg.author;
     let channelID = msg.channel;
     let message = msg.content;
-    console.log("user:",user);
-    console.log(bot);
 
     console.log(user + ": \"" + message + "\"");
     if(findArgs.response && !user.bot){
