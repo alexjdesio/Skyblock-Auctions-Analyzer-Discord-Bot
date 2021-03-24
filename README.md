@@ -5,7 +5,7 @@ Skyblock Auctions Analyzer is a lightweight Discord Bot for parsing Auction Hous
 # Commands
   - **Snipe**(!snipe)- Regularly checks the auction house and notifies users of chosen items below a specified price point.
   - **Watch**(!watch)- Finds the five cheapest BIN listings for all items contained within tracked batches, and publishes a comprehensive report of item prices every time the command is called.
-  - **Find**(In Development)- Finds the lowest five prices for a single item when called.
+  - **Find**(!find)- Finds the lowest five prices for a single item when called.
 
 # Batches
 
@@ -27,7 +27,7 @@ Batches allow users to create groups of items to collectively track. This improv
 - **Q**: Can I use this bot without downloading or running any code?
   - **A**: As of the initial release, you must download the provided code to make use of the bot. In addition, you must have a valid authentication token for a discord bot from https://discord.com/developers/applications. This is because the bot does not have distinct settings for individual users, and as such, would be difficult to deploy on multiple servers/for multiple users at the same time. This is only applicable for the initial release, and I intend to work on this in the future.
 - **Q**: I tried to run the bot, but I ran into an issue. What should I do?
-  - **A**: Please feel free to reach out via the [issue queue](https://github.com/alexjdesio/Skyblock-Auctions-Analyzer-Discord-Bot/issues). I read all requests posts in the issue queue and will do my best to respond promptly. If you had an issue with running the bot prior to March 22, please download the newest release as the port from discord.io to discord.js resolved many of the common issues users were encountering.
+  - **A**: Please feel free to reach out via the [issue queue](https://github.com/alexjdesio/Skyblock-Auctions-Analyzer-Discord-Bot/issues). I read all requests posted in the issue queue and will do my best to respond promptly. If you had an issue with running the bot prior to March 22, please download the newest release as the port from discord.io to discord.js resolved many of the common issues users were encountering.
 - **Q**: What features are planned for future releases?
    - **A**:  I have a lot planned! Right now, the top priorities are releasing **!find**, improving the speed of the bot, caching results to prevent repeated work, and improving the batch creation command.
 - **Q**: How will this project scale?
