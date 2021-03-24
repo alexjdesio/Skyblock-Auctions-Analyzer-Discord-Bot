@@ -29,7 +29,7 @@ Batches allow users to create groups of items to collectively track. This improv
 - **Q**: I tried to run the bot, but I ran into an issue. What should I do?
   - **A**: Please feel free to reach out via the [issue queue](https://github.com/alexjdesio/Skyblock-Auctions-Analyzer-Discord-Bot/issues). I read all requests posted in the issue queue and will do my best to respond promptly. If you had an issue with running the bot prior to March 22, please download the newest release as the port from discord.io to discord.js resolved many of the common issues users were encountering.
 - **Q**: What features are planned for future releases?
-   - **A**:  I have a lot planned! Right now, the top priorities are releasing improving the batch creation command, allowing users to dynamically configure price points for !snipe, and integrating batches with !snipe.
+   - **A**:  I have a lot planned! Right now, the top priorities are improving the batch creation command, allowing users to dynamically configure price points for !snipe, and integrating batches with !snipe.
 - **Q**: How will this project scale?
   - **A**: As of v0.1, there is no concrete backend for this project. Scaling would require interaction with a database so that individual users could have their own list of batches and track/untrack batches just for themselves. The other key component to scaling this project is hosting it on a dedicated web server(i.e. Heroku, AWS, etc.). As soon as these two constraints are met, the bot can be officially released to the public and users will be able to add the bot to their servers without needing to set up their own version of the bot.
 - **Q**: Are there any other similar projects planned?
