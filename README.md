@@ -65,13 +65,14 @@ If you want to run this bot on your own Node.js server, you need to create the t
 The format for the necessary files is as follows:
 For auth.json:
 {
-  "api_key": "your_key_goes_here"
+  "token": "your_token_goes_here"
 }
 
 For key.json
 {
-  "token": "your_token_goes_here"
+  "api_key": "your_key_goes_here"
 }
+
 
 ## Changelog
 - **v0.1- Initial Release**
