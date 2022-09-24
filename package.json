@@ -1,9 +1,9 @@
 {
   "name": "Skyblock Auction Analyzer",
-  "version": "1.0.0",
-  "description": "My First Discord Bot",
+  "version": "1.1.0",
+  "description": "Skyblock Auctions Analyzer is a lightweight Discord Bot for parsing Auction House JSON data",
   "main": "bot.js",
-  "author": "AlexDGT",
+  "author": "alexjdesio",
   "dependencies": {
     "discord.io": "github:woor/discord.io#gateway_v6",
     "discord.js": "^12.5.1",
